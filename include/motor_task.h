@@ -23,7 +23,7 @@
 
 
 #define TASKSTACKSIZE               (128)
-#define PRIORITY_MOTOR_TASK         (1)
+#define PRIORITY_MOTOR_TASK         (4)
 #define QUEUE_SIZE                  (10)
 
 #define MOVE_FORWARD_BIT            (0)
@@ -40,11 +40,15 @@
 uint32_t TaskMotorInit(void);
 void setup_motors(void);
 void setup_gpio(void);
-void forwared(void);
+void move_forward(void);
 void move_backward(void);
 void turn_left(void);
 void turn_right(void);
 void slow_motor(void);
 void stop_motor(void);
+
+QueueHandle_t motor_q;
+extern xSemaphoreHandle g_pMotorTaskSemaphore;
+uint8_t command;
 
 #endif /* INCLUDE_MOTOR_TASK_H_ */

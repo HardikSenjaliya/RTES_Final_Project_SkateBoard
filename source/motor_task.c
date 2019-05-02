@@ -122,7 +122,6 @@ void setup_gpio()
 
 void setup_motors()
 {
-
     /*Set the PWM clock to be system clock*/
     SysCtlPWMClockSet(SYSCTL_PWMDIV_1);
 
@@ -173,63 +172,71 @@ void setup_motors()
      */
     /*Enable the PWM0 output signal.*/
     PWMOutputState(PWM0_BASE, PWM_OUT_0_BIT, true);
-    PWMOutputState(PWM0_BASE, PWM_OUT_1_BIT, true)
+    PWMOutputState(PWM0_BASE, PWM_OUT_1_BIT, true);
 
     /*Enables the PWM generator block.*/
     PWMGenEnable(PWM0_BASE, PWM_GEN_0);
+
+    setup_gpio();
 }
 
-static void TaskFunction(void *pvParameters)
+static void MotorFunction(void *pvParameters)
 {
-    UARTprintf("Motor TASK\n");
-
+//    UARTprintf("Motor TASK\n");
+    TickType_t start;
     uint32_t ulNotifiedValue = 0;
 
     while (1)
     {
-        xTaskNotifyWait(0x00, 0xFFFF, &ulNotifiedValue, portMAX_DELAY);
-
-        UARTprintf("\n\nNotification Received with value of - %d\n\n",
-                   ulNotifiedValue);
-
-        /*TODO switch case*/
-        if (ulNotifiedValue & MOVE_FORWARD_BIT)
+        if ( xSemaphoreTake(g_pMotorTaskSemaphore, portMAX_DELAY) == pdTRUE)
         {
-            move_forward();
-        }
 
-        if (ulNotifiedValue & MOVE_BACKWARD_BIT)
-        {
-            move_backward();
-        }
+            UARTprintf("\nMotor task released at %d msecs\n", start);
 
-        if (ulNotifiedValue & MOVE_RIGHT_BIT)
-        {
-            turn_right();
-        }
+            if(xQueueReceive(motor_q, (void*)&command, portMAX_DELAY) != pdTRUE)
+            {
+                UARTprintf("\nError receiving in queue\n");
+            }
+            /*TODO switch case*/
+            if (command & MOVE_FORWARD_BIT)
+            {
+                move_forward();
+            }
 
-        if (ulNotifiedValue & MOVE_LEFT_BIT)
-        {
-            turn_left();
-        }
+            if (command & MOVE_BACKWARD_BIT)
+            {
+                move_backward();
+            }
 
-        if (ulNotifiedValue & BREAK_BIT)
-        {
-            slow_motor();
-        }
+            if (command & MOVE_RIGHT_BIT)
+            {
+                turn_right();
+            }
 
-        if (ulNotifiedValue & STOP_BIT)
-        {
-            stop_motor();
+            if (command & MOVE_LEFT_BIT)
+            {
+                turn_left();
+            }
+
+            if (command & BREAK_BIT)
+            {
+                slow_motor();
+            }
+
+            if (command & STOP_BIT)
+            {
+                stop_motor();
+            }
         }
 
     }
+    vTaskDelete(NULL);
 }
 
 uint32_t TaskMotorInit()
 {
 
-    if (xTaskCreate(TaskFunction, (const portCHAR *) "TASK_MOTOR",
+    if (xTaskCreate(MotorFunction, (const portCHAR *) "TASK_MOTOR",
             TASKSTACKSIZE, NULL, tskIDLE_PRIORITY + PRIORITY_MOTOR_TASK,
             &g_MotorTaskHandle) != pdTRUE)
     {
@@ -237,6 +244,11 @@ uint32_t TaskMotorInit()
         return (1);
     }
 
+    motor_q = xQueueCreate(QUEUE_SIZE, sizeof(uint8_t));
+    if(motor_q == NULL)
+    {
+        UARTprintf("\nError in creating message queue\n");
+    }
     setup_gpio();
     setup_motors();
 

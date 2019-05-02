@@ -10,21 +10,27 @@
 extern TaskHandle_t g_MotorTaskHandle;
 extern xSemaphoreHandle g_pPressureTaskSemaphore;
 
-static void TaskFunction(void *pvParameters)
+void PressureFunction(void *pvParameters)
 {
+    TickType_t start;
     while (1)
     {
         if ( xSemaphoreTake(g_pPressureTaskSemaphore, portMAX_DELAY) == pdTRUE)
         {
+            start = xTaskGetTickCount();
+            xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
+//            UARTprintf("\nPressure Task at %d msecs\n", start);
+            xSemaphoreGive(g_pUARTSemaphore);
             //TODO task notification
         }
     }
+    vTaskDelete(NULL);
 }
 
 uint32_t PressureSensorTaskInit()
 {
 
-    if (xTaskCreate(TaskFunction, (const portCHAR *) "TASK_PRESSURE", TASKSTACKSIZE,
+    if (xTaskCreate(PressureFunction, (const portCHAR *) "TASK_PRESSURE", TASKSTACKSIZE,
             NULL, tskIDLE_PRIORITY + PRIORITY_PRESSURE_TASK, NULL) != pdTRUE)
     {
         UARTprintf("ERROR: creating Pressure task\n");

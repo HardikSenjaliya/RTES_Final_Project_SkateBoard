@@ -11,8 +11,11 @@
 #include "motor_task.h"
 #include "pressure_sensor_task.h"
 #include "ultrasonic_task.h"
-#include "logger_task.h"
+#include "button.h"
 
+
+volatile unsigned long long SeqCnt=0;
+volatile TickType_t time_tickers;
 
 /*Function Prototypes*/
 void configure_uart(void);

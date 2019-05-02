@@ -8,6 +8,6 @@
 	<isElfFormat value="true"/>
 	<rts value="libc.a"/>
 	<createSlaveProjects value=""/>
-	<origin value="C:/Users/hardi/workspace_v9/RTES/Ex_6"/>
+	<origin value="C:/Users/jains/Desktop/CU Boulder/RTES/Exercise 6/RTES_Final_Project_SkateBoard"/>
 	<isTargetManual value="true"/>
 </projectOptions>

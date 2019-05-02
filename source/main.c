@@ -49,51 +49,19 @@
 #include "task.h"
 #include "include/main.h"
 //*****************************************************************************
-//
-//! \addtogroup example_list
-//! <h1>FreeRTOS Example (freertos_demo)</h1>
-//!
-//! This application demonstrates the use of FreeRTOS on Launchpad.
-//!
-//! The application blinks the user-selected LED at a user-selected frequency.
-//! To select the LED press the left button and to select the frequency press
-//! the right button.  The UART outputs the application status at 115,200 baud,
-//! 8-n-1 mode.
-//!
-//! This application utilizes FreeRTOS to perform the tasks in a concurrent
-//! fashion.  The following tasks are created:
-//!
-//! - An LED task, which blinks the user-selected on-board LED at a
-//!   user-selected rate (changed via the buttons).
-//!
-//! - A Switch task, which monitors the buttons pressed and passes the
-//!   information to LED task.
-//!
-//! In addition to the tasks, this application also uses the following FreeRTOS
-//! resources:
-//!
-//! - A Queue to enable information transfer between tasks.
-//!
-//! - A Semaphore to guard the resource, UART, from access by multiple tasks at
-//!   the same time.
-//!
-//! - A non-blocking FreeRTOS Delay to put the tasks in blocked state when they
-//!   have nothing to do.
-//!
-//! For additional details on FreeRTOS, refer to the FreeRTOS web page at:
-//! http://www.freertos.org/
-//
 
 
 //TODO set period for tasks
-#define ULTRASONIC_TASK_PERIOD              (1000)
-#define PRESSURE_TASK_PERIOD                (2000)
+#define PRESSURE_TASK_PERIOD                (10)
+#define MOTOR_TASK_PERIOD                (10)
+#define ULTRASONIC_TASK_PERIOD              (200)
 
 
 /*Binary semaphores for scheduling tasks from the timer handler*/
 
 xSemaphoreHandle g_pUltrasonicTaskSemaphore;
 xSemaphoreHandle g_pPressureTaskSemaphore;
+xSemaphoreHandle g_pMotorTaskSemaphore;
 
 /*Mutex for sharing UART*/
 xSemaphoreHandle g_pUARTSemaphore;
@@ -129,23 +97,47 @@ void vApplicationStackOverflowHook(xTaskHandle *pxTask, char *pcTaskName)
 }
 
 /*TImer0 Interrupt Handler*/
-void Timer0BIntHandler(void)
+void Timer0AIntHandler(void)
 {
 
     //UARTprintf("Timer Handler!\n");
+    //
+    // Clear the timer interrupt.
+    //
+    ROM_TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+    ROM_IntMasterDisable();
 
-    /*Clear the TIMER0 interrupt*/
-    TimerIntClear(TIMER0_BASE, TIMER_TIMB_TIMEOUT);
+    ++SeqCnt;
+    time_tickers = xTaskGetTickCount();
+//    xSemaphoreTakeFromISR(g_pUARTSemaphore, pdFALSE);
+//    UARTprintf("\n<TIME: %d >   [TIMER 0] Sequencer cycle %d\n", time_tickers, SeqCnt);
+//    xSemaphoreGiveFromISR(g_pUARTSemaphore, pdFALSE);
 
-    static uint32_t count = 0;
+        // Release each service at a sub-rate of the generic sequencer rate
 
-    count = (count + 1) % 1000;
-    //UARTprintf("Count value is %d\n", counter);
+        // Servcie_1 = RT_MAX-1 @ 10 Hz
+    if((SeqCnt % ULTRASONIC_TASK_PERIOD) == 0)   xSemaphoreGive(g_pUltrasonicTaskSemaphore);
 
-    if ((count % ULTRASONIC_TASK_PERIOD) == 0)
+        // Service_2 = RT_MAX-2 @ 10 Hz
+    if((SeqCnt % PRESSURE_TASK_PERIOD) == 0)   xSemaphoreGive(g_pPressureTaskSemaphore);
+
+    // Service_2 = RT_MAX-2 @ 10 Hz
+    if((SeqCnt % MOTOR_TASK_PERIOD) == 0)   xSemaphoreGive(g_pMotorTaskSemaphore);
+
+/*    if(SeqCnt > (TOTAL_TIME*30*(FREQUENCY/30)))
     {
-        xSemaphoreGive(g_pUltrasonicTaskSemaphore);
-    }
+        xSemaphoreGive(semaphore_1);
+        xSemaphoreGive(semaphore_2);
+        xSemaphoreGive(semaphore_3);
+        abortS1=TRUE;
+        abortS2=TRUE;
+        abortS3=TRUE;
+        ROM_TimerDisable(TIMER0_BASE, TIMER_A);
+        ROM_TimerIntDisable(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+        UARTprintf("\nTEST COMPLETE!!!\n");
+        UARTprintf("\n\n");
+    }*/
+    ROM_IntMasterEnable();
 
 }
 
@@ -171,23 +163,22 @@ void initialize_hardware_timer0()
 {
 
     /*Enable TIMER0 peripheral*/
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
 
     /*Enable Processor Interrupts*/
-    IntMasterEnable();
+    ROM_IntMasterEnable();
 
     /*Configure TIMER0*/
-    TimerConfigure(TIMER0_BASE, TIMER_CFG_SPLIT_PAIR | TIMER_CFG_B_PERIODIC);
+    ROM_TimerConfigure(TIMER0_BASE, TIMER_CFG_PERIODIC);
 
-    TimerLoadSet(TIMER0_BASE, TIMER_B, SysCtlClockGet() / 1000);
-
+    ROM_TimerLoadSet(TIMER0_BASE, TIMER_A, 50000);
+    ROM_IntEnable(INT_TIMER0A);
     /*Enable Interrupt for TIMER0 when timer time out and enable
      * the interrupt for timer0 in processor*/
-    TimerIntEnable(TIMER0_BASE, TIMER_TIMB_TIMEOUT);
-    IntEnable(INT_TIMER0B);
+    ROM_TimerIntEnable(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
 
     /*Enable the timer*/
-    TimerEnable(TIMER0_BASE, TIMER_B);
+    ROM_TimerEnable(TIMER0_BASE, TIMER_A);
 
 }
 
@@ -224,16 +215,18 @@ void ConfigureUART(void)
 //*****************************************************************************
 int main(void)
 {
+    ROM_FPULazyStackingEnable();
+    ROM_SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ |
+                     SYSCTL_OSC_MAIN);
 
-    SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
-    SYSCTL_XTAL_16MHZ);
+//    SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
+//    SYSCTL_XTAL_16MHZ);
 
+    g_pUARTSemaphore = xSemaphoreCreateMutex();
     ConfigureUART();
 
     UARTprintf("\n\nStarted Executing Main thread !\n");
     UARTprintf("System Clock Value %d\n", SysCtlClockGet());
-
-    g_pUARTSemaphore = xSemaphoreCreateMutex();
 
     /*Create a binary semaphore to signal the task from the timer handler*/
     g_pUARTSemaphore = xSemaphoreCreateMutex();
@@ -242,6 +235,8 @@ int main(void)
 
     /*Create a Timer*/
     initialize_hardware_timer0();
+    ConfigureButton();
+    setup_motors();
 
     /*Create task for Pressure Sensor*/
     if (PressureSensorTaskInit() != 0)
