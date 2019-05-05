@@ -1,8 +1,9 @@
-/*
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
  * distance.c
- *
- *  Created on: May 1, 2019
- *      Author: jains
+ * This file includes APIs for initializing the distance sensor,
+ * sending the trigger pulse, and calculating the distance from object
+ * based on time taken for pulse to return to echo pin.
  */
 
 
@@ -25,7 +26,7 @@ const distSensor_t HCSR04 = {
                                      .timerBase = TIMER1_BASE,
                                      .timerSubType = TIMER_A,
                                      .timerConfig = TIMER_CFG_PERIODIC_UP,
-                                     .trigDelay = 500,
+                                     .trigDelay = 200,
 
 };
 

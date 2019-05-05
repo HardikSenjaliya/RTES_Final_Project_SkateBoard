@@ -1,8 +1,7 @@
-/*
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
  * distance.h
- *
- *  Created on: May 1, 2019
- *      Author: jains
+ * This file includes headers required for distance.c
  */
 
 #ifndef INCLUDE_DISTANCE_H_
@@ -36,7 +35,7 @@
 
 //********************************************************************************
 
-#define TIMER_CLOCK_FREQUENCY                   (50000000)          // Timer Clock Frequency
+#define TIMER_CLOCK_FREQUENCY                   (20000000)          // Timer Clock Frequency
 #define TICKS_PER_USEC                          (1000000)           // Timer Ticks per microsecond
 
 typedef struct distSensor{

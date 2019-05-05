@@ -1,13 +1,14 @@
-/*
- * led_task.c
- *
- *  Created on: 08-Apr-2019
- *      Author: hardik
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
+ * ultrasonic_task.c
+ * This file initializes the ultrasonic task, and waits on a semaphore
+ * to be released by the sequencer. Once semaphore is released, the task
+ * calls an API to get distance through the ultrasonic sensor,
+ * and based on the distance taks a decision to either do nothing, or stop
+ * the motors or slow them down.
  */
 
 #include "ultrasonic_task.h"
-
-extern xSemaphoreHandle g_pUltrasonicTaskSemaphore;
 
 void UltrasonicFunction(void *pvParameters)
 {
@@ -20,32 +21,33 @@ void UltrasonicFunction(void *pvParameters)
             start = xTaskGetTickCount();
             UARTprintf("\nUltrasonic Task released at %d msecs", distance_cm, start);
 
-            if((distance_cm = distSensor_getDistance(HCSR04)) < 50)
+            distance_cm = distSensor_getDistance(HCSR04);
+            if(distance_cm < 25)
             {
-                command = BREAK_BIT;
-                if(xQueueSend(motor_q, (void*)&command, portMAX_DELAY) != pdTRUE)//message queue to motors to slow down
+                obstacle = 1;
+                command = STOP_BIT;
+                if(xQueueSendToFront(motor_q, (char*)&command, portMAX_DELAY) != pdTRUE)//message queue to motors to slow down
                 {
                     UARTprintf("\nError sending to queue from Ultrasonic Func.\n");
                 }
             }
-            else if((distance_cm = distSensor_getDistance(HCSR04)) < 25)
+            else if(distance_cm < 50)
             {
-                obstacle = 1;
-                command = STOP_BIT;
-                if(xQueueSend(motor_q, (void*)&command, portMAX_DELAY) != pdTRUE)//message queue to motors to slow down
+                command = BREAK_BIT;
+                //message queue to motors to stop
+                if(xQueueSend(motor_q, (char*)&command, portMAX_DELAY) != pdTRUE)//message queue to motors to slow down
                 {
                     UARTprintf("\nError sending to queue from Ultrasonic Func.\n");
                 }
-                //message queue to motors to stop
             }
             else
             {
                 command = MOVE_FORWARD_BIT;
-                if(xQueueSend(motor_q, (void*)&command, portMAX_DELAY) != pdTRUE)//message queue to motors to slow down
+                //message queue to motors to move forward
+                if(xQueueSend(motor_q, (char*)&command, portMAX_DELAY) != pdTRUE)//message queue to motors to slow down
                 {
                     UARTprintf("\nError sending to queue from Ultrasonic Func.\n");
                 }
-                //message queue to motors to move forward
             }
             xSemaphoreTake(g_pUARTSemaphore, portMAX_DELAY);
             UARTprintf("\nDistance : %d cm at %d msecs", distance_cm, start);

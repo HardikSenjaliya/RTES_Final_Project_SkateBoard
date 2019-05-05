@@ -1,8 +1,11 @@
-/*
- * alert_task.c
- *
- *  Created on: 09-Apr-2019
- *      Author: hardik
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
+ * motor_task.c
+ * This file has APIs for setting up the GPIO pins and motors. It also
+ * has APIs for motor controls, like moving in all directions.
+ * It has the control logic for the motor task, which waits first on a
+ * semaphore, and then a message queue for some other task to signal it to
+ * run the motors. Logic is computed, and then it motor control is decided.
  */
 
 #include "motor_task.h"
@@ -65,7 +68,7 @@ void turn_right()
     GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_3, 0);
 
     GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_5, GPIO_PIN_5);
-    GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_PIN_6);
+//    GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_6, GPIO_PIN_6);
 }
 
 void slow_motor()
@@ -191,46 +194,48 @@ static void MotorFunction(void *pvParameters)
         if ( xSemaphoreTake(g_pMotorTaskSemaphore, portMAX_DELAY) == pdTRUE)
         {
 
-            UARTprintf("\nMotor task released at %d msecs\n", start);
-
-            if(xQueueReceive(motor_q, (void*)&command, portMAX_DELAY) != pdTRUE)
+            if(xQueueReceive(motor_q, (char*)&command, portMAX_DELAY) != pdTRUE)
             {
                 UARTprintf("\nError receiving in queue\n");
             }
-            /*TODO switch case*/
-            if (command & MOVE_FORWARD_BIT)
-            {
-                move_forward();
-            }
-
-            if (command & MOVE_BACKWARD_BIT)
-            {
-                move_backward();
-            }
-
-            if (command & MOVE_RIGHT_BIT)
-            {
-                turn_right();
-            }
-
-            if (command & MOVE_LEFT_BIT)
-            {
-                turn_left();
-            }
-
-            if (command & BREAK_BIT)
-            {
-                slow_motor();
-            }
-
+//            UARTprintf("\nMotor task released at %d msecs\n", start);
             if (command & STOP_BIT)
             {
                 stop_motor();
+                xQueueReset(motor_q);
+            }
+            else
+            {
+                /*TODO switch case*/
+                if (command & MOVE_FORWARD_BIT)
+                {
+                    move_forward();
+                }
+
+                if (command & MOVE_BACKWARD_BIT)
+                {
+                    move_backward();
+                }
+
+                if (command & MOVE_RIGHT_BIT)
+                {
+                    turn_right();
+                }
+
+                if (command & MOVE_LEFT_BIT)
+                {
+                    turn_left();
+                }
+
+                if (command & BREAK_BIT)
+                {
+                    slow_motor();
+                }
             }
         }
 
     }
-    vTaskDelete(NULL);
+//    vTaskDelete(NULL);
 }
 
 uint32_t TaskMotorInit()

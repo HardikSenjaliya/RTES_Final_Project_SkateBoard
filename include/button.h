@@ -1,8 +1,7 @@
-/*
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
  * button.h
- *
- *  Created on: May 2, 2019
- *      Author: jains
+ * This file includes headers required for button.c
  */
 
 #ifndef INCLUDE_BUTTON_H_

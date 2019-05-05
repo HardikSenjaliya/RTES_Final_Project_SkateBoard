@@ -1,8 +1,7 @@
-/*
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
  * main.h
- *
- *  Created on: 08-Apr-2019
- *      Author: hardi
+ * This file includes headers required for main.c
  */
 
 #ifndef INC_MAIN_H_
@@ -16,6 +15,7 @@
 
 volatile unsigned long long SeqCnt=0;
 volatile TickType_t time_tickers;
+uint8_t command;
 
 /*Function Prototypes*/
 void configure_uart(void);

@@ -1,8 +1,7 @@
-/*
- * alert_task.h
- *
- *  Created on: 09-Apr-2019
- *      Author: hardik
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
+ * motor_task.h
+ * This file includes headers required for motor_task.c
  */
 
 #ifndef INCLUDE_MOTOR_TASK_H_
@@ -12,6 +11,7 @@
 #include "queue.h"
 #include "task.h"
 #include "semphr.h"
+#include "timer.h"
 #include "FreeRTOSConfig.h"
 #include "utils/uartstdio.h"
 #include "motor_task.h"
@@ -26,12 +26,12 @@
 #define PRIORITY_MOTOR_TASK         (4)
 #define QUEUE_SIZE                  (10)
 
-#define MOVE_FORWARD_BIT            (0)
-#define MOVE_BACKWARD_BIT           (1)
-#define MOVE_RIGHT_BIT              (2)
-#define MOVE_LEFT_BIT               (3)
-#define BREAK_BIT                   (4)
-#define STOP_BIT                    (5)
+#define MOVE_FORWARD_BIT            (0b00000001)
+#define MOVE_BACKWARD_BIT           (0b00000010)
+#define MOVE_RIGHT_BIT              (0b00000100)
+#define MOVE_LEFT_BIT               (0b00001000)
+#define BREAK_BIT                   (0b00010000)
+#define STOP_BIT                    (0b00100000)
 
 
 #define PWM_PERIOD_90               (57600)
@@ -49,6 +49,7 @@ void stop_motor(void);
 
 QueueHandle_t motor_q;
 extern xSemaphoreHandle g_pMotorTaskSemaphore;
-uint8_t command;
+extern xSemaphoreHandle g_pUARTSemaphore;
+extern uint8_t command;
 
 #endif /* INCLUDE_MOTOR_TASK_H_ */

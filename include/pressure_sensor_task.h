@@ -1,8 +1,7 @@
-/*
- * temperature_task.h
- *
- *  Created on: 08-Apr-2019
- *      Author: hardi
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
+ * pressure_sensor_task.h
+ * This file includes headers required for pressure_sensor_task.c
  */
 
 #ifndef INC_TEMPERATURE_TASK_H_
@@ -29,15 +28,21 @@ extern xSemaphoreHandle g_pUARTSemaphore;
 #define TASKSTACKSIZE                    (128)
 #define PRIORITY_PRESSURE_TASK            (4)
 
-#define MOVE_FORWARD_BIT            (0)
-#define MOVE_BACKWARD_BIT           (1)
-#define MOVE_RIGHT_BIT              (2)
-#define MOVE_LEFT_BIT               (3)
-#define BREAK_BIT                   (4)
-#define STOP_BIT                    (5)
+#define MOVE_FORWARD_BIT            (0b00000001)
+#define MOVE_BACKWARD_BIT           (0b00000010)
+#define MOVE_RIGHT_BIT              (0b00000100)
+#define MOVE_LEFT_BIT               (0b00001000)
+#define BREAK_BIT                   (0b00010000)
+#define STOP_BIT                    (0b00100000)
 
 extern QueueHandle_t motor_q;
+extern TaskHandle_t g_MotorTaskHandle;
+extern xSemaphoreHandle g_pPressureTaskSemaphore;
+extern uint8_t command;
 
+uint32_t tmp[2];
+
+void ConfigureADC();
 uint32_t PressureSensorTaskInit(void);
 void PressureFunction(void *pvParameters);
 

@@ -1,8 +1,9 @@
-/*
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
  * button.c
- *
- *  Created on: May 2, 2019
- *      Author: jains
+ * This file configures the control ON/OFF button, and has the
+ * ISR for said button. Whenever ISR is called, the logic toggles
+ * a flag for starting or stopping the sequencer.
  */
 
 #include "Include/button.h"
@@ -30,13 +31,12 @@ void Button_ISR(void)
     GPIOIntDisable(GPIO_PORTF_BASE, GPIO_INT_PIN_4);
     i = GPIOIntStatus(GPIO_PORTF_BASE, false);
     GPIOIntClear(GPIO_PORTF_BASE, i);
-    if((startup == 1) || (obstacle == 1))
     {
         startup = 0; obstacle = 0;
-        button_flag = 1;
-        for(i=0; i<1000; i++);
-        move_forward();
+        button_flag++;
+        stop_motor();
     }
+    for(i=0; i<1000; i++);
     GPIOIntEnable(GPIO_PORTF_BASE, GPIO_INT_PIN_4);
 }
 

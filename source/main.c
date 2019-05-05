@@ -22,6 +22,14 @@
 //
 //*****************************************************************************
 
+/* Authors: Sarthak Jain, Vatsal Sheth and Hardik Senjaliya
+ * Dated: 05/02/2019
+ * main.c
+ * This file initializes semaphores, a timer for sequencing tasks, and creates
+ * tasks. It also has a timer handler, which posts the semaphores required by
+ * various tasks to run.
+ */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
@@ -52,9 +60,9 @@
 
 
 //TODO set period for tasks
-#define PRESSURE_TASK_PERIOD                (10)
-#define MOTOR_TASK_PERIOD                (10)
-#define ULTRASONIC_TASK_PERIOD              (200)
+#define PRESSURE_TASK_PERIOD                (60)
+#define MOTOR_TASK_PERIOD                   (60)
+#define ULTRASONIC_TASK_PERIOD              (100)
 
 
 /*Binary semaphores for scheduling tasks from the timer handler*/
@@ -100,45 +108,25 @@ void vApplicationStackOverflowHook(xTaskHandle *pxTask, char *pcTaskName)
 void Timer0AIntHandler(void)
 {
 
-    //UARTprintf("Timer Handler!\n");
-    //
-    // Clear the timer interrupt.
-    //
-    ROM_TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
-    ROM_IntMasterDisable();
+    if(button_flag & 0x01)
+    {
+        ROM_TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+        ROM_IntMasterDisable();
 
-    ++SeqCnt;
-    time_tickers = xTaskGetTickCount();
-//    xSemaphoreTakeFromISR(g_pUARTSemaphore, pdFALSE);
-//    UARTprintf("\n<TIME: %d >   [TIMER 0] Sequencer cycle %d\n", time_tickers, SeqCnt);
-//    xSemaphoreGiveFromISR(g_pUARTSemaphore, pdFALSE);
+        ++SeqCnt;
+        time_tickers = xTaskGetTickCount();
 
-        // Release each service at a sub-rate of the generic sequencer rate
+            // Servcie_1 = RT_MAX-1 @ 10 Hz
+        if((SeqCnt % ULTRASONIC_TASK_PERIOD) == 0)   xSemaphoreGive(g_pUltrasonicTaskSemaphore);
 
-        // Servcie_1 = RT_MAX-1 @ 10 Hz
-    if((SeqCnt % ULTRASONIC_TASK_PERIOD) == 0)   xSemaphoreGive(g_pUltrasonicTaskSemaphore);
+            // Service_2 = RT_MAX-2 @ 10 Hz
+        if((SeqCnt % PRESSURE_TASK_PERIOD) == 0)   xSemaphoreGive(g_pPressureTaskSemaphore);
 
         // Service_2 = RT_MAX-2 @ 10 Hz
-    if((SeqCnt % PRESSURE_TASK_PERIOD) == 0)   xSemaphoreGive(g_pPressureTaskSemaphore);
+        if((SeqCnt % MOTOR_TASK_PERIOD) == 0)   xSemaphoreGive(g_pMotorTaskSemaphore);
 
-    // Service_2 = RT_MAX-2 @ 10 Hz
-    if((SeqCnt % MOTOR_TASK_PERIOD) == 0)   xSemaphoreGive(g_pMotorTaskSemaphore);
-
-/*    if(SeqCnt > (TOTAL_TIME*30*(FREQUENCY/30)))
-    {
-        xSemaphoreGive(semaphore_1);
-        xSemaphoreGive(semaphore_2);
-        xSemaphoreGive(semaphore_3);
-        abortS1=TRUE;
-        abortS2=TRUE;
-        abortS3=TRUE;
-        ROM_TimerDisable(TIMER0_BASE, TIMER_A);
-        ROM_TimerIntDisable(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
-        UARTprintf("\nTEST COMPLETE!!!\n");
-        UARTprintf("\n\n");
-    }*/
-    ROM_IntMasterEnable();
-
+        ROM_IntMasterEnable();
+    }
 }
 
 void diable_hardware_timer0()
@@ -216,11 +204,8 @@ void ConfigureUART(void)
 int main(void)
 {
     ROM_FPULazyStackingEnable();
-    ROM_SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ |
+    ROM_SysCtlClockSet(SYSCTL_SYSDIV_10 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ |
                      SYSCTL_OSC_MAIN);
-
-//    SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_OSC | SYSCTL_OSC_MAIN |
-//    SYSCTL_XTAL_16MHZ);
 
     g_pUARTSemaphore = xSemaphoreCreateMutex();
     ConfigureUART();
@@ -232,11 +217,15 @@ int main(void)
     g_pUARTSemaphore = xSemaphoreCreateMutex();
     g_pUltrasonicTaskSemaphore = xSemaphoreCreateBinary();
     g_pPressureTaskSemaphore = xSemaphoreCreateBinary();
+    g_pMotorTaskSemaphore = xSemaphoreCreateBinary();
 
     /*Create a Timer*/
     initialize_hardware_timer0();
     ConfigureButton();
     setup_motors();
+    ConfigureADC();
+    command = 0;
+    while(startup!=0);
 
     /*Create task for Pressure Sensor*/
     if (PressureSensorTaskInit() != 0)
@@ -268,7 +257,7 @@ int main(void)
     /*Start Scheduler*/
     vTaskStartScheduler();
 
-    while (1)
+//    while (1)
     {
     }
 }
